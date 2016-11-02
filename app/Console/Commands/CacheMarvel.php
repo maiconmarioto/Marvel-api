@@ -39,16 +39,17 @@ class CacheMarvel extends Command
      */
     public function handle()
     {
-        $this->getFromMarvelToCache('comics');
         $this->getFromMarvelToCache('characters');
+        $this->getFromMarvelToCache('comics');
     }
 
     private function getFromMarvelToCache($endpoint)
     {
 
-        if (Cache::has('$endpoint')) {
-            $this->info("Forgetting the old cache value");
-            Cache::forget('$endpoint');
+
+        if (Cache::has($endpoint)) {
+            $this->info("Forgetting the old $endpoint cache");
+            Cache::forget($endpoint);
         }
 
         $ts   = time();
@@ -64,14 +65,14 @@ class CacheMarvel extends Command
         ]);
 
 
-        $firstQuery = $client->getConfig('query');
-        $firstQuery['limit'] = 1;
-        $response = $client->get(env('BASE_URL') . $endpoint, ['query' => $firstQuery]);
-        $response = json_decode($response->getBody(), true);
-        $totalCount = $response['data']['total'];
+        $firstRequest = $client->getConfig('query');
+        $firstRequest['limit'] = 1;
+        $firstResponse = $client->get(env('BASE_URL') . $endpoint, ['query' => $firstRequest]);
+        $firstResponse = json_decode($firstResponse->getBody(), true);
+        $totalCount = $firstResponse['data']['total'];
 
         $resultsPerPage = 100;
-        $pageCount = 16;
+        $pageCount = 15;
         $minutesToCache = 10080; //set cache time to 7 days || 1 day = 1440 minutes.
 
         $data = [];
@@ -80,10 +81,10 @@ class CacheMarvel extends Command
         $this->info('Url: ' . env('BASE_URL') . $endpoint );
         $bar = $this->output->createProgressBar($pageCount);
 
-        for($x = 0; $x <= $pageCount; $x++){
+        for($x = 0; $x < $pageCount; $x++){
 
             $query = $client->getConfig('query');
-            $query['limit'] = $resultsPerPage;
+            $query['limit']  = $resultsPerPage;
             $query['offset'] = $resultsPerPage * $x;
 
             $response = $client->get(env('BASE_URL') . $endpoint, ['query' => $query]);
@@ -95,5 +96,6 @@ class CacheMarvel extends Command
             $bar->advance();
         }
         Cache::put($endpoint, $currentData, $minutesToCache);
+        $this->info(' ');
     }
 }
